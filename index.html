@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SARflix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #6d28d9;
+            --secondary: #1f2937;
+            --background: #111827;
+            --text-main: #f9fafb;
+            --text-secondary: #9ca3af;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+        .glass-effect {
+            background: rgba(31, 41, 55, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .aspect-2-3 { aspect-ratio: 2 / 3; }
+        .horizontal-scroll {
+            display: flex;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+        }
+        .horizontal-scroll::-webkit-scrollbar { display: none; }
+        
+        /* Banner Speed & Full Scroll Logic */
+        .banner-container {
+            width: 200%; /* Double the width to hold duplicated banners for infinite effect */
+            display: flex;
+        }
+        .banner-item {
+            width: 50vw; /* Take up half the screen width for smooth visible scroll on mobile */
+            flex-shrink: 0;
+            margin-right: 1rem; /* Added margin for visual separation */
+        }
+        @media (min-width: 640px) {
+            .banner-item {
+                 width: 33.3333%; /* Adjust for larger screens */
+            }
+        }
+
+        /* Banner speed increased: changed from 20s to 10s */
+        .banner-scroll { animation: scroll 10s linear infinite; }
+        @keyframes scroll {
+            /* Now scrolls exactly half the container width (all original banners) */
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); } 
+        }
+        
+        /* Removed custom CSS for video player as Tailwind classes are now used for better control */
+
+        .liked-icon {
+            fill: var(--primary); 
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body class="overscroll-none">
+
+    <div id="app" class="flex flex-col min-h-screen">
+        <div id="drawer" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300 opacity-0">
+            <div id="drawer-content" class="absolute top-0 left-0 h-full w-64 bg-gray-900 shadow-lg p-4 transform -translate-x-full transition-transform duration-300">
+                <div class="flex flex-col items-center mb-6">
+                    <img src="https://i.ibb.co/ynttvvR9/2a3bad27c8.jpg" alt="Profile" class="w-24 h-24 rounded-full border-2 border-purple-500 object-cover">
+                    <h2 class="text-xl font-bold mt-4">SARflix</h2>
+                </div>
+                <nav class="flex flex-col space-y-2">
+                    <a href="https://t.me/sar_hahaha" target="_blank" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition-colors">
+                        <i data-lucide="send" class="w-5 h-5 mr-3"></i>
+                        <span>Telegram Channel</span>
+                    </a>
+                    <a href="https://t.me/sar_hahahaha" target="_blank" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition-colors">
+                        <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                        <span>Telegram Group</span>
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <header id="main-header" class="sticky top-0 glass-effect z-30 transition-transform duration-300">
+            <div class="container mx-auto p-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <button id="drawer-toggle" class="p-2 rounded-full hover:bg-gray-700">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    <button id="search-toggle" class="p-2 rounded-full hover:bg-gray-700">
+                        <i data-lucide="search" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <img src="https://i.ibb.co/6JgWjJ48/bf2dec3d81.jpg" alt="SARflix Title" class="h-8 object-contain">
+                <div class="w-16"></div> </div>
+            
+            <div id="search-container" class="container mx-auto px-4 pb-3 hidden">
+                <input type="search" id="search-input" placeholder="Search Movies, Series, Live TV..." 
+                       class="w-full p-2 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500">
+            </div>
+        </header>
+
+        <main id="main-content" class="flex-grow container mx-auto p-4 pb-20 transition-opacity duration-300">
+            <div id="loading-spinner" class="text-center py-10 hidden">
+                <i data-lucide="loader-circle" class="w-8 h-8 animate-spin mx-auto text-purple-500"></i>
+            </div>
+        </main>
+
+        <div id="player-view" class="fixed inset-0 bg-background z-[60] flex-col hidden transition-opacity duration-300 opacity-0">
+             <div class="w-full bg-black">
+                <div class="relative max-w-7xl mx-auto pt-2 md:pt-4">
+                    <div class="relative w-full aspect-video">
+                        <button id="close-player-btn" class="absolute top-4 left-4 z-10 p-2 bg-black bg-opacity-50 rounded-full text-white hover:bg-opacity-70">
+                            <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                        </button>
+                        <video id="video-player" controls controlslist="nodownload" class="w-full h-full object-contain"></video>
+                    </div>
+                 </div>
+             </div>
+             <div class="flex-grow p-4 overflow-y-auto">
+                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                    <h2 id="player-title" class="text-2xl font-bold mb-2">Title</h2>
+                    <div class="flex items-center space-x-4 mt-2 sm:mt-0">
+                        <div class="flex items-center space-x-1 text-gray-400">
+                            <i data-lucide="eye" class="w-5 h-5"></i>
+                            <span id="player-views">0</span>
+                        </div>
+                        <button id="like-btn" class="flex items-center space-x-1 py-1 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors">
+                            <i id="like-icon" data-lucide="thumbs-up" class="w-5 h-5"></i>
+                            <span id="like-count">0</span>
+                        </button>
+                    </div>
+                 </div>
+                 
+                 <div id="related-content-container" class="mt-6">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xl font-semibold">Related</h3>
+                        <div class="flex items-center space-x-2">
+                            <label for="autoplay-toggle" class="text-sm text-gray-400 cursor-pointer">Autoplay</label>
+                            <button id="autoplay-toggle" role="switch" aria-checked="false" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-gray-600 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-background">
+                                <span id="autoplay-indicator" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="related-content" class="horizontal-scroll">
+                        </div>
+                 </div>
+             </div>
+        </div>
+
+        <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 glass-effect z-30 transition-transform duration-300">
+            <div class="container mx-auto flex justify-around">
+                <button data-section="movies" class="nav-item flex-1 p-3 flex flex-col items-center text-purple-400 border-t-2 border-purple-400">
+                    <i data-lucide="film" class="w-6 h-6"></i>
+                    <span class="text-xs mt-1">Movies</span>
+                </button>
+                <button data-section="series" class="nav-item flex-1 p-3 flex flex-col items-center text-gray-400">
+                    <i data-lucide="tv" class="w-6 h-6"></i>
+                    <span class="text-xs mt-1">Series</span>
+                </button>
+                <button data-section="livetv" class="nav-item flex-1 p-3 flex flex-col items-center text-gray-400">
+                    <i data-lucide="satellite-dish" class="w-6 h-6"></i>
+                    <span class="text-xs mt-1">Live TV</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, doc, getDoc, getDocs, onSnapshot, updateDoc, increment, query, where, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // --- Configuration & Initialization ---
+
+        const MOCK_USER_ID = "mock-user-123"; // Placeholder for the current user's ID to handle liking
+
+        const firebaseConfig = {
+            apiKey: "",
+            authDomain: "",
+            databaseURL: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: "",
+            measurementId: ""
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentSection = 'movies';
+        let isSearchActive = false; // Track search state
+        let currentPlaying = null; // Holds { item, type, collection, episode?, episodeIndex? }
+        let unsubscribeFromLikes = null; // To stop listening to real-time updates when player closes
+        let isAutoplayEnabled = false; // --- NEW: Track autoplay state ---
+
+        const ui = {
+            app: document.getElementById('app'),
+            mainHeader: document.getElementById('main-header'),
+            bottomNav: document.getElementById('bottom-nav'),
+            mainContent: document.getElementById('main-content'),
+            navItems: document.querySelectorAll('.nav-item'),
+            drawer: document.getElementById('drawer'),
+            drawerContent: document.getElementById('drawer-content'),
+            drawerToggle: document.getElementById('drawer-toggle'),
+            playerView: document.getElementById('player-view'),
+            closePlayerBtn: document.getElementById('close-player-btn'),
+            videoPlayer: document.getElementById('video-player'),
+            playerTitle: document.getElementById('player-title'),
+            playerViews: document.getElementById('player-views'),
+            likeBtn: document.getElementById('like-btn'),
+            likeIcon: document.getElementById('like-icon'),
+            likeCount: document.getElementById('like-count'),
+            relatedContentContainer: document.getElementById('related-content-container'),
+            relatedContent: document.getElementById('related-content'),
+            
+            // Search UI Elements
+            searchToggle: document.getElementById('search-toggle'),
+            searchContainer: document.getElementById('search-container'),
+            searchInput: document.getElementById('search-input'),
+            loadingSpinner: document.getElementById('loading-spinner'),
+
+            // --- NEW: Autoplay UI Elements ---
+            autoplayToggle: document.getElementById('autoplay-toggle'),
+            autoplayIndicator: document.getElementById('autoplay-indicator'),
+        };
+
+        // --- Player Logic ---
+
+        function togglePlayerView(show, data = null) {
+            if (show) {
+                // 1. Hide main UI elements for a "new screen" feel
+                ui.mainHeader.style.transform = 'translateY(-100%)';
+                ui.bottomNav.style.transform = 'translateY(100%)';
+                ui.mainContent.style.opacity = '0';
+
+                // 2. Show player view and load data
+                ui.playerView.classList.remove('hidden');
+                ui.playerView.classList.add('flex');
+                setTimeout(() => {
+                    ui.playerView.classList.remove('opacity-0');
+                }, 10);
+                
+                if(data) updatePlayer(data);
+            } else {
+                // 1. Stop video and reset source
+                ui.videoPlayer.pause();
+                ui.videoPlayer.src = "";
+                if (unsubscribeFromLikes) unsubscribeFromLikes(); // Stop real-time listener
+
+                // 2. Hide player view and reset main UI elements
+                ui.playerView.classList.add('opacity-0');
+                
+                setTimeout(() => {
+                    ui.playerView.classList.add('hidden');
+                    ui.playerView.classList.remove('flex');
+                    ui.mainHeader.style.transform = 'translateY(0)';
+                    ui.bottomNav.style.transform = 'translateY(0)';
+                    ui.mainContent.style.opacity = '1';
+                }, 300); // Match the transition duration
+            }
+        }
+        
+        async function updatePlayer(data) {
+            currentPlaying = data;
+            
+            ui.playerTitle.textContent = data.item.name;
+            ui.videoPlayer.src = data.type === 'series' ? data.episode.url : data.item.videoUrl;
+            ui.videoPlayer.play();
+
+            // Item reference for updates
+            const itemRef = doc(db, data.collection, data.item.id);
+
+            // Increment views (fire and forget for quick update)
+            await updateDoc(itemRef, { views: increment(1) });
+            
+            // Listen for changes to show views and likes in real time
+            unsubscribeFromLikes = onSnapshot(itemRef, (docSnap) => {
+                if(docSnap.exists()){
+                    const itemData = docSnap.data();
+                    const likes = itemData.likes || [];
+                    
+                    ui.playerViews.textContent = itemData.views || 0;
+                    ui.likeCount.textContent = likes.length;
+                    
+                    // Update like button state for MOCK_USER_ID
+                    if (likes.includes(MOCK_USER_ID)) {
+                        ui.likeIcon.classList.add('liked-icon');
+                        ui.likeIcon.setAttribute('data-lucide', 'thumbs-up'); // Ensure fillable icon is used
+                    } else {
+                        ui.likeIcon.classList.remove('liked-icon');
+                        ui.likeIcon.setAttribute('data-lucide', 'thumbs-up');
+                    }
+                    lucide.createIcons();
+                }
+            });
+
+            // Render related content
+            renderRelatedContent(data);
+        }
+
+        async function handleLikeToggle() {
+            if (!currentPlaying) return;
+
+            const itemRef = doc(db, currentPlaying.collection, currentPlaying.item.id);
+            const docSnap = await getDoc(itemRef);
+
+            if (docSnap.exists()) {
+                const itemData = docSnap.data();
+                const likes = itemData.likes || [];
+                const isLiked = likes.includes(MOCK_USER_ID);
+                
+                // Toggle like status
+                const updatePayload = {};
+                if (isLiked) {
+                    updatePayload.likes = arrayRemove(MOCK_USER_ID);
+                } else {
+                    updatePayload.likes = arrayUnion(MOCK_USER_ID);
+                }
+
+                await updateDoc(itemRef, updatePayload);
+                // The onSnapshot listener will handle the UI update automatically
+            }
+        }
+
+
+        // --- Content Rendering Logic ---
+
+        async function renderRelatedContent(data){
+             ui.relatedContent.innerHTML = '';
+             let related = [];
+             if(data.type === 'movies') {
+                 const q = query(collection(db, 'movies'), where("catalogue", "==", data.item.catalogue), where("isPublic", "==", true));
+                 const querySnapshot = await getDocs(q);
+                 querySnapshot.forEach(doc => {
+                     if(doc.id !== data.item.id) related.push({id: doc.id, ...doc.data()});
+                 });
+                 ui.relatedContentContainer.querySelector('h3').textContent = "More from " + data.item.catalogue;
+                 ui.relatedContent.innerHTML = related.map(m => renderItemCard(m, 'movies')).join('');
+             } else if(data.type === 'series') {
+                 related = data.item.episodes;
+                 ui.relatedContentContainer.querySelector('h3').textContent = "All Episodes";
+                 ui.relatedContent.innerHTML = related.map((ep, idx) => renderEpisodeCard(ep, idx, data.item)).join('');
+             } else if(data.type === 'livetv') {
+                 const q = query(collection(db, 'livetv'), where("isPublic", "==", true));
+                 const querySnapshot = await getDocs(q);
+                 querySnapshot.forEach(doc => {
+                      if(doc.id !== data.item.id) related.push({id: doc.id, ...doc.data()});
+                 });
+                 ui.relatedContentContainer.querySelector('h3').textContent = "Other Channels";
+                 ui.relatedContent.innerHTML = related.map(c => renderItemCard(c, 'livetv')).join('');
+             }
+             addClickListeners();
+        }
+        
+        // Item card updated to include category/type in the label
+        function renderItemCard(item, type) {
+            const label = type === 'movies' ? (item.catalogue || 'Movie') : 
+                          type === 'series' ? 'Series' : 
+                          type === 'livetv' ? 'Live TV' : '';
+                          
+            return `
+            <div class="flex-shrink-0 w-32 mr-4 item-card cursor-pointer group" data-id="${item.id}" data-type="${type}">
+                <div class="relative w-full aspect-2-3 rounded-lg overflow-hidden shadow-lg group-hover:ring-2 ring-purple-500 transition-shadow">
+                    <img src="${item.imageUrl}" alt="${item.name}" class="w-full h-full object-cover">
+                    <span class="absolute bottom-0 left-0 bg-black bg-opacity-70 text-xs text-white px-2 py-0.5 rounded-tr-lg">${label}</span>
+                </div>
+                <h4 class="text-sm mt-2 truncate text-center">${item.name}</h4>
+            </div>
+            `;
+        }
+        
+        function renderEpisodeCard(episode, index, seriesData) {
+            return `
+            <div class="flex-shrink-0 w-40 mr-4 item-card cursor-pointer group" data-id="${seriesData.id}" data-type="series" data-episode-index="${index}">
+                 <div class="relative w-full aspect-video rounded-lg overflow-hidden shadow-lg group-hover:ring-2 ring-purple-500 transition-shadow">
+                     <img src="${episode.imageUrl || seriesData.imageUrl}" alt="Episode ${index+1}" class="w-full h-full object-cover">
+                     <span class="absolute top-2 right-2 bg-purple-500 text-xs text-white px-2 py-0.5 rounded-full">E${index+1}</span>
+                 </div>
+                 <h4 class="text-sm mt-2 truncate text-center">${seriesData.name} - E${index+1}</h4>
+            </div>
+            `;
+        }
+
+        async function renderMovies() {
+            ui.loadingSpinner.classList.remove('hidden');
+            const bannersSnapshot = await getDocs(query(collection(db, 'banners')));
+            const banners = [];
+            bannersSnapshot.forEach(doc => banners.push(doc.data()));
+
+            const moviesSnapshot = await getDocs(query(collection(db, 'movies'), where("isPublic", "==", true)));
+            const movies = [];
+            moviesSnapshot.forEach(doc => movies.push({id: doc.id, ...doc.data()}));
+            
+            const moviesByCategory = movies.reduce((acc, movie) => {
+                const category = movie.catalogue || 'Other';
+                if (!acc[category]) acc[category] = [];
+                acc[category].push(movie);
+                return acc;
+            }, {});
+
+            // Modified Banner rendering for full and continuous scroll
+            ui.mainContent.innerHTML = `
+                <div class="w-full overflow-hidden mb-8">
+                    <div class="banner-container banner-scroll">
+                        ${[...banners, ...banners].map(banner => `
+                            <div class="banner-item">
+                                <img src="${banner.url}" class="w-full h-40 object-cover rounded-lg">
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                ${Object.keys(moviesByCategory).map(category => `
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">${category}</h2>
+                            <a href="#" class="text-purple-400 text-sm">See More</a>
+                        </div>
+                        <div class="horizontal-scroll">
+                           ${moviesByCategory[category].map(movie => renderItemCard(movie, 'movies')).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+            ui.loadingSpinner.classList.add('hidden');
+            addClickListeners();
+            lucide.createIcons(); // Ensure icons in new content are rendered
+        }
+
+        async function renderSeries() {
+            ui.loadingSpinner.classList.remove('hidden');
+            const seriesSnapshot = await getDocs(query(collection(db, 'series'), where("isPublic", "==", true)));
+            const series = [];
+            seriesSnapshot.forEach(doc => series.push({id: doc.id, ...doc.data()}));
+            
+            ui.mainContent.innerHTML = `
+                <div id="series-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                   ${series.map(s => renderItemCard(s, 'series')).join('')}
+                </div>
+                <div id="episode-view" class="hidden"></div>
+            `;
+            ui.loadingSpinner.classList.add('hidden');
+            addClickListeners();
+        }
+        
+        async function renderSeriesEpisodes(seriesId) {
+            const seriesDoc = await getDoc(doc(db, 'series', seriesId));
+            if(!seriesDoc.exists()) return;
+            const seriesData = {id: seriesDoc.id, ...seriesDoc.data()};
+            
+            document.getElementById('series-grid').classList.add('hidden');
+            const episodeView = document.getElementById('episode-view');
+            episodeView.classList.remove('hidden');
+            
+            episodeView.innerHTML = `
+                <button id="back-to-series" class="mb-4 flex items-center text-purple-400 hover:text-purple-300 transition-colors"><i data-lucide="arrow-left" class="w-5 h-5 mr-2"></i> Back to Series</button>
+                <h2 class="text-2xl font-bold mb-4">${seriesData.name} - Episodes</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    ${seriesData.episodes.map((ep, idx) => renderEpisodeCard(ep, idx, seriesData)).join('')}
+                </div>
+            `;
+            lucide.createIcons();
+            addClickListeners();
+            document.getElementById('back-to-series').addEventListener('click', () => {
+                episodeView.classList.add('hidden');
+                document.getElementById('series-grid').classList.remove('hidden');
+            });
+        }
+
+        async function renderLiveTV() {
+            ui.loadingSpinner.classList.remove('hidden');
+            const permsDoc = await getDoc(doc(db, 'permissions', 'liveTvGlobal'));
+            if (!permsDoc.exists() || !permsDoc.data().enabled) {
+                ui.mainContent.innerHTML = `<p class="text-center text-gray-400">Live TV is not available at the moment. 📡</p>`;
+                ui.loadingSpinner.classList.add('hidden');
+                return;
+            }
+
+            const liveTVSnapshot = await getDocs(query(collection(db, 'livetv'), where("isPublic", "==", true)));
+            const channels = [];
+            liveTVSnapshot.forEach(doc => channels.push({id: doc.id, ...doc.data()}));
+            
+            ui.mainContent.innerHTML = `
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                   ${channels.map(c => renderItemCard(c, 'livetv')).join('')}
+                </div>
+            `;
+            ui.loadingSpinner.classList.add('hidden');
+            addClickListeners();
+        }
+        
+        // Universal Search Function
+        async function renderSearch(searchTerm) {
+            ui.loadingSpinner.classList.remove('hidden');
+            ui.mainContent.innerHTML = '';
+            
+            if (searchTerm.length < 2) {
+                ui.mainContent.innerHTML = `<p class="text-center text-gray-400 mt-10">Type at least 2 characters to search.</p>`;
+                ui.loadingSpinner.classList.add('hidden');
+                return;
+            }
+
+            const results = {
+                movies: [],
+                series: [],
+                livetv: []
+            };
+            
+            const normalizedSearchTerm = searchTerm.toLowerCase();
+
+            // Fetch all public items and filter client-side
+            
+            const movieSnapshot = await getDocs(query(collection(db, 'movies'), where("isPublic", "==", true)));
+            movieSnapshot.forEach(doc => {
+                const item = {id: doc.id, ...doc.data()};
+                if (item.name.toLowerCase().includes(normalizedSearchTerm)) {
+                    results.movies.push(item);
+                }
+            });
+
+            const seriesSnapshot = await getDocs(query(collection(db, 'series'), where("isPublic", "==", true)));
+            seriesSnapshot.forEach(doc => {
+                 const item = {id: doc.id, ...doc.data()};
+                 if (item.name.toLowerCase().includes(normalizedSearchTerm)) {
+                     results.series.push(item);
+                 }
+            });
+            
+            const liveTvSnapshot = await getDocs(query(collection(db, 'livetv'), where("isPublic", "==", true)));
+            liveTvSnapshot.forEach(doc => {
+                 const item = {id: doc.id, ...doc.data()};
+                 if (item.name.toLowerCase().includes(normalizedSearchTerm)) {
+                     results.livetv.push(item);
+                 }
+            });
+
+            let htmlContent = `<h2 class="text-2xl font-bold mb-4">Search Results for: "${searchTerm}"</h2>`;
+            let foundResults = false;
+
+            if (results.movies.length > 0) {
+                htmlContent += `
+                    <div class="mb-8">
+                        <h3 class="text-xl font-semibold mb-3">Movies (${results.movies.length})</h3>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                            ${results.movies.map(m => renderItemCard(m, 'movies')).join('')}
+                        </div>
+                    </div>
+                `;
+                foundResults = true;
+            }
+            if (results.series.length > 0) {
+                 htmlContent += `
+                    <div class="mb-8">
+                        <h3 class="text-xl font-semibold mb-3">Series (${results.series.length})</h3>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                            ${results.series.map(s => renderItemCard(s, 'series')).join('')}
+                        </div>
+                    </div>
+                `;
+                foundResults = true;
+            }
+            if (results.livetv.length > 0) {
+                 htmlContent += `
+                    <div class="mb-8">
+                        <h3 class="text-xl font-semibold mb-3">Live TV Channels (${results.livetv.length})</h3>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                            ${results.livetv.map(c => renderItemCard(c, 'livetv')).join('')}
+                        </div>
+                    </div>
+                `;
+                foundResults = true;
+            }
+
+            if (!foundResults) {
+                htmlContent += `<p class="text-center text-gray-400 mt-10">No results found for "${searchTerm}".</p>`;
+            }
+
+            ui.mainContent.innerHTML = htmlContent;
+            ui.loadingSpinner.classList.add('hidden');
+            addClickListeners();
+            lucide.createIcons();
+        }
+
+
+        function addClickListeners() {
+            document.querySelectorAll('.item-card').forEach(card => {
+                card.addEventListener('click', async () => {
+                    const id = card.dataset.id;
+                    const type = card.dataset.type;
+                    
+                    if (type === 'series' && !card.dataset.episodeIndex) {
+                        // If it's a series card (not an episode), render the episode list
+                        renderSeriesEpisodes(id);
+                        return;
+                    }
+
+                    // For movies, livetv, or a specific series episode
+                    const itemDoc = await getDoc(doc(db, type, id));
+                    if(!itemDoc.exists()) return;
+                    const itemData = {id: itemDoc.id, ...itemDoc.data()};
+
+                    const playerData = {
+                        item: { ...itemData, videoUrl: itemData.movieUrl || itemData.liveTvUrl },
+                        type,
+                        collection: type
+                    };
+                    
+                    if(type === 'series') {
+                        const episodeIndex = parseInt(card.dataset.episodeIndex);
+                        playerData.episode = itemData.episodes[episodeIndex];
+                        playerData.episodeIndex = episodeIndex; // --- MODIFIED: Store index for autoplay ---
+                        // Update item name to include episode number for the player title
+                        playerData.item.name = `${itemData.name} - Episode ${episodeIndex + 1}`;
+                    }
+
+                    togglePlayerView(true, playerData);
+                });
+            });
+        }
+
+        function switchSection(section) {
+            togglePlayerView(false);
+            
+            // Hide search container when switching sections
+            isSearchActive = false;
+            ui.searchContainer.classList.add('hidden');
+            ui.searchInput.value = ''; // Clear search input
+            
+            currentSection = section;
+            ui.navItems.forEach(item => {
+                // Remove existing styling first
+                item.classList.remove('text-purple-400', 'border-purple-400', 'text-gray-400');
+                item.style.borderTopWidth = '2px';
+                item.style.borderColor = 'transparent';
+
+                if (item.dataset.section === section) {
+                    item.classList.add('text-purple-400');
+                    item.style.borderColor = 'var(--primary)'; // Apply active border color
+                } else {
+                    item.classList.add('text-gray-400');
+                }
+            });
+            if (section === 'movies') renderMovies();
+            else if (section === 'series') renderSeries();
+            else if (section === 'livetv') renderLiveTV();
+        }
+
+        // --- Drawer Logic ---
+        function toggleDrawer(open) {
+            if(open){
+                ui.drawer.classList.remove('hidden');
+                setTimeout(() => {
+                    ui.drawer.classList.remove('opacity-0');
+                    ui.drawerContent.classList.remove('-translate-x-full');
+                }, 10);
+            } else {
+                ui.drawerContent.classList.add('-translate-x-full');
+                setTimeout(() => {
+                    ui.drawer.classList.add('opacity-0');
+                    // Changed to 300ms to match the transition time before hiding
+                    setTimeout(() => ui.drawer.classList.add('hidden'), 300); 
+                }, 10); // Start fade-out and slide instantly
+            }
+        }
+        
+        // Search Toggle Logic
+        function toggleSearch() {
+            if (isSearchActive) {
+                // If closing search
+                ui.searchContainer.classList.add('hidden');
+                ui.searchInput.value = '';
+                // Go back to the previously selected section
+                switchSection(currentSection); 
+            } else {
+                // If opening search
+                ui.searchContainer.classList.remove('hidden');
+                ui.searchInput.focus();
+                
+                // Clear main content and show initial search message
+                ui.mainContent.innerHTML = `<p class="text-center text-gray-400 mt-10">Start typing to search across all content.</p>`;
+            }
+            isSearchActive = !isSearchActive;
+        }
+
+
+        // --- Event Listeners ---
+        ui.drawerToggle.addEventListener('click', () => toggleDrawer(true));
+        ui.drawer.addEventListener('click', (e) => {
+            // Close drawer when clicking outside the content area
+            if(e.target === ui.drawer) toggleDrawer(false); 
+        });
+        ui.closePlayerBtn.addEventListener('click', () => togglePlayerView(false));
+        
+        // Enable real-time liking
+        ui.likeBtn.addEventListener('click', handleLikeToggle);
+
+        ui.navItems.forEach(item => {
+            item.addEventListener('click', () => switchSection(item.dataset.section));
+        });
+        
+        // Search listeners
+        ui.searchToggle.addEventListener('click', toggleSearch);
+        ui.searchInput.addEventListener('input', (e) => {
+            // Debounce or immediate search on input for fast results
+            renderSearch(e.target.value);
+        });
+
+        // --- NEW: Autoplay Toggle Listener ---
+        ui.autoplayToggle.addEventListener('click', () => {
+            isAutoplayEnabled = !isAutoplayEnabled; // Toggle the state
+            
+            if (isAutoplayEnabled) {
+                ui.autoplayToggle.setAttribute('aria-checked', 'true');
+                ui.autoplayToggle.classList.replace('bg-gray-600', 'bg-purple-600');
+                ui.autoplayIndicator.classList.replace('translate-x-0', 'translate-x-5');
+            } else {
+                ui.autoplayToggle.setAttribute('aria-checked', 'false');
+                ui.autoplayToggle.classList.replace('bg-purple-600', 'bg-gray-600');
+                ui.autoplayIndicator.classList.replace('translate-x-5', 'translate-x-0');
+            }
+        });
+
+        // --- NEW: Video Autoplay 'ended' Listener ---
+        ui.videoPlayer.addEventListener('ended', () => {
+            if (!isAutoplayEnabled) return; // Do nothing if autoplay is off
+
+            let nextItemCard = null;
+
+            // Check if it's a series and find the next episode
+            if (currentPlaying && currentPlaying.type === 'series' && currentPlaying.episodeIndex !== undefined) {
+                const nextEpisodeIndex = currentPlaying.episodeIndex + 1;
+                nextItemCard = ui.relatedContent.querySelector(`.item-card[data-episode-index="${nextEpisodeIndex}"]`);
+            
+            } else if (currentPlaying) { 
+                // For movies and livetv, just play the first related item
+                nextItemCard = ui.relatedContent.querySelector('.item-card'); // Gets the first related item
+            }
+
+            if (nextItemCard) {
+                nextItemCard.click(); // Simulate a click on the next item
+            }
+        });
+
+        // --- Initial Load ---
+        lucide.createIcons();
+        switchSection('movies'); // Start the app on the movies section
+    </script>
+</body>
+</html>
